@@ -1,18 +1,26 @@
 spring:
   application:
     name: NoCode
+  # 数据源配置：归属到 spring 节点下，缩进和 application 同级
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/no_code?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 293928
+  # springdoc-openapi(knife4j) 配置：同样归属到 spring 节点下
+  springdoc:
+    group-configs:
+      - group: 'default'
+        packages-to-scan: com.lzy.nocode.controller
+
+# server 配置：和 spring 同级（注意缩进）
 server:
   port: 8080
   servlet:
     context-path: /api
-# springdoc-openapi(knife4j)
-springdoc:
-  group-configs:
-    - group: 'default'
-      packages-to-scan: com.lzy.nocode.controller
-# knife4j
+
+# knife4j 配置：和 spring、server 同级
 knife4j:
   enable: true
   setting:
     language: zh_cn
-
