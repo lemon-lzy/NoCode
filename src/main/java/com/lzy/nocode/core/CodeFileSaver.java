@@ -1,7 +1,6 @@
 package com.lzy.nocode.core;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.lzy.nocode.ai.enums.CodeGenTypeEnum;
 import com.lzy.nocode.ai.model.HtmlCodeResult;
@@ -22,8 +21,8 @@ public class CodeFileSaver {
     /**
      * 保存 HtmlCodeResult
      */
-    public static File saveHtmlCodeResult(HtmlCodeResult result) {
-        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.HTML.getValue());
+    public static File saveHtmlCodeResult(HtmlCodeResult result,long appId) {
+        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.HTML.getValue(),appId);
         writeToFile(baseDirPath, "index.html", result.getHtmlCode());
         return new File(baseDirPath);
     }
@@ -31,8 +30,8 @@ public class CodeFileSaver {
     /**
      * 保存 MultiFileCodeResult
      */
-    public static File saveMultiFileCodeResult(MultiFileCodeResult result) {
-        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue());
+    public static File saveMultiFileCodeResult(MultiFileCodeResult result,long appId) {
+        String baseDirPath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue(),appId);
         writeToFile(baseDirPath, "index.html", result.getHtmlCode());
         writeToFile(baseDirPath, "style.css", result.getCssCode());
         writeToFile(baseDirPath, "script.js", result.getJsCode());
@@ -40,10 +39,10 @@ public class CodeFileSaver {
     }
 
     /**
-     * 构建唯一目录路径：tmp/code_output/bizType_雪花ID
+     * 构建唯一目录路径：tmp/code_output/bizType_应用ID
      */
-    private static String buildUniqueDir(String bizType) {
-        String uniqueDirName = StrUtil.format("{}_{}", bizType, IdUtil.getSnowflakeNextIdStr());
+    private static String buildUniqueDir(String bizType,Long appId) {
+        String uniqueDirName = StrUtil.format("{}_{}", bizType, appId);
         String dirPath = FILE_SAVE_ROOT_DIR + File.separator + uniqueDirName;
         FileUtil.mkdir(dirPath);
         return dirPath;
