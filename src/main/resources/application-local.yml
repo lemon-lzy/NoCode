@@ -1,12 +1,29 @@
 spring:
   application:
     name: NoCode
+  # session 配置
+  session:
+    store-type: redis
+    # session 30 天过期
+    timeout: 2592000
+    # cookie 30 天过期
+    cookie:
+      max-age: 2592000
   # 数据源配置：归属到 spring 节点下，缩进和 application 同级
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/no_code?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: 293928
+  # redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      ttl: 3600
+
+
   # springdoc-openapi(knife4j) 配置：同样归属到 spring 节点下
   springdoc:
     group-configs:
