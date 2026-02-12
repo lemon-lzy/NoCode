@@ -1,12 +1,19 @@
 package com.lzy.nocode.core;
 
+import cn.hutool.json.JSONUtil;
 import com.lzy.nocode.ai.AiCodeGeneratorService;
 import com.lzy.nocode.ai.AiCodeGeneratorServiceFactory;
 import com.lzy.nocode.ai.enums.CodeGenTypeEnum;
+import com.lzy.nocode.ai.message.AiResponseMessage;
+import com.lzy.nocode.ai.message.ToolExecutedMessage;
+import com.lzy.nocode.ai.message.ToolRequestMessage;
 import com.lzy.nocode.ai.model.HtmlCodeResult;
 import com.lzy.nocode.ai.model.MultiFileCodeResult;
 import com.lzy.nocode.exception.BusinessException;
 import com.lzy.nocode.exception.ErrorCode;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -120,26 +127,41 @@ public class AiCodeGeneratorFacade {
         // 根据 appId 获取对应的 AI 服务实例
         AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId,CodeGenTypeEnum.VUE_PROJECT);
 
-        Flux<String> result = aiCodeGeneratorService.generateVueProjectCodeStream(appId,userMessage);
+        Flux<String> result = processTokenStream(aiCodeGeneratorService.generateVueProjectCodeStream(appId,userMessage));
         // 当流式返回生成代码完成后，再保存代码
-        StringBuilder codeBuilder = new StringBuilder();
-        return result
-                .doOnNext(chunk -> {
-                    // 实时收集代码片段
-                    codeBuilder.append(chunk);
-                })
-                .doOnComplete(() -> {
-                    // 流式返回完成后保存代码
-                    try {
-                        String completeMultiFileCode = codeBuilder.toString();
-                        MultiFileCodeResult multiFileResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
-                        // 保存代码到文件
-                        File savedDir = CodeFileSaver.saveMultiFileCodeResult(multiFileResult,appId);
-                        log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
-                    } catch (Exception e) {
-                        log.error("保存失败: {}", e.getMessage());
-                    }
-                });
+        return result;
+    }
+
+
+    /**
+     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
+     *
+     * @param tokenStream TokenStream 对象
+     * @return Flux<String> 流式响应
+     */
+    private Flux<String> processTokenStream(TokenStream tokenStream) {
+        return Flux.create(sink -> {
+            tokenStream.onPartialResponse((String partialResponse) -> {
+                        AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
+                        sink.next(JSONUtil.toJsonStr(aiResponseMessage));
+                    })
+                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                        sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+                    })
+                    .onToolExecuted((ToolExecution toolExecution) -> {
+                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                    })
+                    .onCompleteResponse((ChatResponse response) -> {
+                        sink.complete();
+                    })
+                    .onError((Throwable error) -> {
+                        error.printStackTrace();
+                        sink.error(error);
+                    })
+                    .start();
+        });
     }
 
 
