@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.lzy.nocode.ai.AiCodeGenTypeRoutingService;
 import com.lzy.nocode.ai.enums.CodeGenTypeEnum;
 import com.lzy.nocode.constant.AppConstant;
 import com.lzy.nocode.core.AiCodeGeneratorFacade;
@@ -15,6 +16,7 @@ import com.lzy.nocode.exception.BusinessException;
 import com.lzy.nocode.exception.ErrorCode;
 import com.lzy.nocode.exception.ThrowUtils;
 import com.lzy.nocode.mapper.AppMapper;
+import com.lzy.nocode.model.dto.app.AppAddRequest;
 import com.lzy.nocode.model.dto.app.AppQueryRequest;
 import com.lzy.nocode.model.entity.App;
 import com.lzy.nocode.model.entity.User;
@@ -62,6 +64,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
 
     @Resource
     private ScreenshotService screenshotService;
+
+    @Resource
+    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
     /**
      * 删除应用时关联删除对话历史
@@ -150,6 +155,27 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
             appVO.setUser(userVO);
             return appVO;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public Long createApp(AppAddRequest appAddRequest, User loginUser) {
+        // 参数校验
+        String initPrompt = appAddRequest.getInitPrompt();
+        ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化 prompt 不能为空");
+        // 构造入库对象
+        App app = new App();
+        BeanUtil.copyProperties(appAddRequest, app);
+        app.setUserId(loginUser.getId());
+        // 应用名称暂时为 initPrompt 前 12 位
+        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+        // 使用 AI 智能选择代码生成类型
+        CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
+        app.setCodeGenType(selectedCodeGenType.getValue());
+        // 插入数据库
+        boolean result = this.save(app);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        log.info("应用创建成功，ID: {}, 类型: {}", app.getId(), selectedCodeGenType.getValue());
+        return app.getId();
     }
 
     @Override

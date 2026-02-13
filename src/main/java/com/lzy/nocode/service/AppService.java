@@ -1,5 +1,6 @@
 package com.lzy.nocode.service;
 
+import com.lzy.nocode.model.dto.app.AppAddRequest;
 import com.lzy.nocode.model.dto.app.AppQueryRequest;
 import com.lzy.nocode.model.entity.User;
 import com.lzy.nocode.model.vo.AppVO;
@@ -62,4 +63,12 @@ public interface AppService extends IService<App> {
      * @param appUrl 应用访问URL
      */
     public void generateAppScreenshotAsync(Long appId, String appUrl);
+
+    /**
+     * 创建应用
+     * @param appAddRequest
+     * @param loginUser
+     * @return
+     */
+    public Long createApp(AppAddRequest appAddRequest, User loginUser);
 }
